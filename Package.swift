@@ -37,9 +37,6 @@ let package = Package(
             name: "NEARJSONRPCTypes",
             dependencies: [
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime")
-            ],
-            plugins: [
-                .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator")
             ]
         ),
         
