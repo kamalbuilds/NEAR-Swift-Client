@@ -99,29 +99,73 @@ struct Generate: AsyncParsableCommand {
     
     private func generateSwiftCode(from spec: Data) async throws {
         print("🏗️  Generating Swift code...")
-        
-        // Save patched spec
-        let patchedSpecPath = "./openapi-patched.json"
-        try spec.write(to: URL(fileURLWithPath: patchedSpecPath))
-        
-        // Run swift-openapi-generator
+
+        // Save patched spec in YAML format (required by swift-openapi-generator)
+        let patchedSpecPath = "./Sources/NEARJSONRPCTypes/openapi-patched.yaml"
+
+        // Convert JSON spec to YAML
+        let jsonObject = try JSONSerialization.jsonObject(with: spec)
+        let yamlData = try convertToYAML(jsonObject)
+        try yamlData.write(to: URL(fileURLWithPath: patchedSpecPath))
+
+        print("📝 Saved patched spec to: \(patchedSpecPath)")
+        print("⚙️  Running swift build to trigger OpenAPI generator plugin...")
+
+        // The swift-openapi-generator plugin runs automatically during build
+        // when it finds openapi.yaml and openapi-generator-config.yaml in the target directory
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.arguments = [
-            "package", "plugin",
-            "--allow-writing-to-directory", outputDir,
-            "generate-code-from-openapi",
-            "--config", "openapi-generator-config.yaml",
-            "--input", patchedSpecPath,
-            "--output-directory", outputDir
-        ]
-        
+        process.arguments = ["build", "--target", "NEARJSONRPCTypes"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
         try process.run()
         process.waitUntilExit()
-        
+
+        let output = pipe.fileHandleForReading.readDataToEndOfFile()
+        if let outputString = String(data: output, encoding: .utf8) {
+            print(outputString)
+        }
+
         if process.terminationStatus != 0 {
             throw GenerationError.codeGenerationFailed
         }
+
+        print("✅ Code generation completed successfully")
+    }
+
+    private func convertToYAML(_ jsonObject: Any) throws -> Data {
+        // Use PyYAML for conversion (requires Python)
+        let jsonData = try JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted)
+        let tempJSONPath = "/tmp/temp_openapi.json"
+        let tempYAMLPath = "/tmp/temp_openapi.yaml"
+
+        try jsonData.write(to: URL(fileURLWithPath: tempJSONPath))
+
+        let convertProcess = Process()
+        convertProcess.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        convertProcess.arguments = [
+            "-c",
+            """
+            import json
+            import yaml
+            with open('\(tempJSONPath)', 'r') as f:
+                data = json.load(f)
+            with open('\(tempYAMLPath)', 'w') as f:
+                yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            """
+        ]
+
+        try convertProcess.run()
+        convertProcess.waitUntilExit()
+
+        if convertProcess.terminationStatus != 0 {
+            throw GenerationError.yamlConversionFailed
+        }
+
+        return try Data(contentsOf: URL(fileURLWithPath: tempYAMLPath))
     }
     
     private func postProcessGeneratedCode() throws {
@@ -370,4 +414,5 @@ struct Generate: AsyncParsableCommand {
 enum GenerationError: Error {
     case codeGenerationFailed
     case invalidSpec
+    case yamlConversionFailed
 }

@@ -1,3 +1,19 @@
+# OpenAPI Generator Configuration for NEAR Swift Client
+# This configuration generates only type definitions (no client code)
+# The custom JSON-RPC client is implemented separately
+
 generate:
   - types
+
+# Make all generated types public for library use
 accessModifier: public
+
+# Additional features for better Swift integration
+additionalImports:
+  - Foundation
+
+# Enable multipart form data support if needed
+multipleContentTypes: true
+
+# Generate documentation from OpenAPI descriptions
+documentationFormat: auto
