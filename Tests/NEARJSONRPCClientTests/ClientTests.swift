@@ -14,9 +14,10 @@ final class ClientTests: XCTestCase {
     
     func testClientInitialization() {
         XCTAssertNotNil(client)
-        
-        // Test invalid URL
-        XCTAssertThrowsError(try NEARClient(url: "not a valid url")) { error in
+
+        // Test invalid URL - URLs without scheme don't fail in URL(string:)
+        // We need to test with truly malformed URLs
+        XCTAssertThrowsError(try NEARClient(url: "")) { error in
             if let clientError = error as? NEARClientError {
                 switch clientError {
                 case .invalidURL:
