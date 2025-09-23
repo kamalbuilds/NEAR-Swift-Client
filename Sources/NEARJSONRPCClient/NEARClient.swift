@@ -76,12 +76,13 @@ public class NEARClient {
             let finality: String
             let accountId: String
         }
-        
+
+        // The actual NEAR RPC returns the account data directly, not wrapped in QueryResponse
         return try await transport.call(
             method: "query",
             params: QueryParams(finality: finality.rawValue, accountId: accountId),
-            resultType: QueryResponse<AccountView>.self
-        ).result
+            resultType: AccountView.self
+        )
     }
     
     // MARK: - Access Key Operations
@@ -214,25 +215,36 @@ public class NEARClient {
     
     /// Get current validators
     public func validators(blockId: BlockReference? = nil) async throws -> ValidatorStakeView {
-        struct ValidatorsParams: Encodable {
-            let blockId: String?
-        }
-        
-        let params = ValidatorsParams(
-            blockId: blockId.map { ref in
-                switch ref {
-                case .height(let h): return String(h)
-                case .hash(let h): return h
-                case .finality(let f): return f.rawValue
+        // NEAR validators endpoint expects either null or [blockId] format
+        if let blockId = blockId {
+            struct ValidatorsParams: Encodable {
+                let blockId: String
+
+                private enum CodingKeys: String, CodingKey {
+                    case blockId = "block_id"
                 }
             }
-        )
-        
-        return try await transport.call(
-            method: "validators",
-            params: params,
-            resultType: ValidatorStakeView.self
-        )
+
+            let blockIdString: String
+            switch blockId {
+            case .height(let h): blockIdString = String(h)
+            case .hash(let h): blockIdString = h
+            case .finality(let f): blockIdString = f.rawValue
+            }
+
+            return try await transport.call(
+                method: "validators",
+                params: [blockIdString],
+                resultType: ValidatorStakeView.self
+            )
+        } else {
+            // For null blockId, use [null]
+            return try await transport.call(
+                method: "validators",
+                params: [String?](arrayLiteral: nil),
+                resultType: ValidatorStakeView.self
+            )
+        }
     }
 }
 
