@@ -1,0 +1,120 @@
+name: Generate and Update Client
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: "5.9"
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v3
+      with:
+        path: .build
+        key: ${{ runner.os }}-swift-${{ hashFiles('Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
+          
+    - name: Download latest OpenAPI spec
+      run: |
+        curl -o openapi.json https://raw.githubusercontent.com/near/nearcore/master/chain/jsonrpc/openapi/openapi.json
+        
+    - name: Check for spec changes
+      id: spec-check
+      run: |
+        if [ -f "openapi-cached.json" ]; then
+          if ! diff -q openapi.json openapi-cached.json > /dev/null 2>&1; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Generate Swift client
+      if: steps.spec-check.outputs.changed == 'true'
+      run: |
+        swift run generate
+        cp openapi.json openapi-cached.json
+
+    - name: Verify generated code compiles
+      if: steps.spec-check.outputs.changed == 'true'
+      run: |
+        echo "Building NEARJSONRPCTypes package..."
+        cd NEARJSONRPCTypes
+        swift build
+        cd ..
+
+    - name: Run tests
+      if: steps.spec-check.outputs.changed == 'true'
+      run: |
+        echo "Running tests for NEARJSONRPCTypes..."
+        cd NEARJSONRPCTypes
+        swift test --enable-code-coverage
+        cd ..
+      
+    - name: Generate coverage report
+      if: steps.spec-check.outputs.changed == 'true'
+      run: |
+        xcrun llvm-cov export \
+          .build/debug/near-swift-clientPackageTests.xctest/Contents/MacOS/near-swift-clientPackageTests \
+          -instr-profile .build/debug/codecov/default.profdata \
+          -format="lcov" > coverage.lcov
+          
+    - name: Upload coverage
+      if: steps.spec-check.outputs.changed == 'true'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.lcov
+        flags: unittests
+        
+    - name: Create Pull Request
+      if: steps.spec-check.outputs.changed == 'true'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore: update generated code from OpenAPI spec"
+        title: "chore: update generated code from OpenAPI spec"
+        body: |
+          This PR updates the generated Swift code based on the latest NEAR OpenAPI specification.
+          
+          ## Changes
+          - Updated types and client code
+          - Regenerated from latest OpenAPI spec
+          
+          ## Testing
+          - All tests passing
+          - Coverage report included
+          
+          Please review the changes before merging.
+        branch: update-generated-code
+        delete-branch: true
+        
+  release:
+    needs: generate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: google-github-actions/release-please-action@v3
+      with:
+        release-type: swift
+        package-name: near-swift-client
+        bump-minor-pre-major: true
+        bump-patch-for-minor-pre-major: true

@@ -1,0 +1,126 @@
+name: Test Independent Packages
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-types-package:
+    name: Test NEARJSONRPCTypes Package
+    runs-on: macos-14
+    strategy:
+      matrix:
+        xcode: ['15.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app
+
+      - name: Build NEARJSONRPCTypes
+        working-directory: ./NEARJSONRPCTypes
+        run: swift build -v
+
+      - name: Test NEARJSONRPCTypes
+        working-directory: ./NEARJSONRPCTypes
+        run: swift test -v
+
+  test-client-package:
+    name: Test NEARJSONRPCClient Package
+    runs-on: macos-14
+    strategy:
+      matrix:
+        xcode: ['15.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app
+
+      - name: Build NEARJSONRPCClient
+        working-directory: ./NEARJSONRPCClient
+        run: swift build -v
+
+      - name: Test NEARJSONRPCClient
+        working-directory: ./NEARJSONRPCClient
+        run: swift test -v
+
+  test-integration:
+    name: Test Integration (Root Workspace)
+    runs-on: macos-14
+    strategy:
+      matrix:
+        xcode: ['15.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app
+
+      - name: Build All Packages
+        run: swift build -v
+
+      - name: Test All Packages
+        run: swift test -v
+
+  verify-independence:
+    name: Verify Package Independence
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test project for Types package
+        run: |
+          mkdir -p /tmp/test-types
+          cd /tmp/test-types
+          swift package init --type library --name TestTypes
+          cat > Package.swift << 'EOF'
+          // swift-tools-version: 5.9
+          import PackageDescription
+
+          let package = Package(
+              name: "TestTypes",
+              platforms: [.macOS(.v13)],
+              dependencies: [
+                  .package(path: "${{ github.workspace }}/NEARJSONRPCTypes")
+              ],
+              targets: [
+                  .target(
+                      name: "TestTypes",
+                      dependencies: [
+                          .product(name: "NEARJSONRPCTypes", package: "NEARJSONRPCTypes")
+                      ]
+                  )
+              ]
+          )
+          EOF
+          swift build
+
+      - name: Create test project for Client package
+        run: |
+          mkdir -p /tmp/test-client
+          cd /tmp/test-client
+          swift package init --type library --name TestClient
+          cat > Package.swift << 'EOF'
+          // swift-tools-version: 5.9
+          import PackageDescription
+
+          let package = Package(
+              name: "TestClient",
+              platforms: [.macOS(.v13)],
+              dependencies: [
+                  .package(path: "${{ github.workspace }}/NEARJSONRPCClient")
+              ],
+              targets: [
+                  .target(
+                      name: "TestClient",
+                      dependencies: [
+                          .product(name: "NEARJSONRPCClient", package: "NEARJSONRPCClient")
+                      ]
+                  )
+              ]
+          )
+          EOF
+          swift build

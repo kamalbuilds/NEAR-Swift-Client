@@ -1,0 +1,319 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (major, minor, patch)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  # Pre-release validation
+  pre-release-validation:
+    name: Pre-Release Validation
+    runs-on: macos-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: "5.9"
+
+      - name: Cache Swift packages
+        uses: actions/cache@v3
+        with:
+          path: .build
+          key: ${{ runner.os }}-swift-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-
+
+      - name: Build packages
+        run: swift build
+
+      - name: Run all tests
+        run: swift test --enable-code-coverage
+
+      - name: Generate coverage report
+        run: |
+          xcrun llvm-cov export \
+            .build/debug/near-swift-clientPackageTests.xctest/Contents/MacOS/near-swift-clientPackageTests \
+            -instr-profile .build/debug/codecov/default.profdata \
+            -format="lcov" > coverage.lcov
+
+      - name: Check coverage threshold
+        run: |
+          coverage=$(lcov --summary coverage.lcov 2>&1 | grep lines | awk '{print $2}' | sed 's/%//')
+          echo "Coverage: $coverage%"
+          if (( $(echo "$coverage < 80" | bc -l) )); then
+            echo "❌ Coverage $coverage% is below 80% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage $coverage% meets threshold"
+
+      - name: Validate package structure
+        run: |
+          # Check that both packages are properly defined
+          swift package dump-package | jq -e '.products | length >= 2'
+          swift package dump-package | jq -e '.products[] | select(.name == "NEARJSONRPCTypes")'
+          swift package dump-package | jq -e '.products[] | select(.name == "NEARJSONRPCClient")'
+
+      - name: Check documentation
+        run: |
+          # Verify key documentation files exist
+          test -f README.md
+          test -f CHANGELOG.md
+          test -f LICENSE
+          test -f RELEASING.md || echo "⚠️  RELEASING.md not found"
+
+      - name: Run SwiftLint
+        run: |
+          brew install swiftlint
+          swiftlint --strict
+
+      - name: Check for conventional commits
+        id: check
+        run: |
+          # Check if last commit follows conventional commits
+          last_commit=$(git log -1 --pretty=%B)
+          if echo "$last_commit" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?:"; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "✅ Conventional commit detected: $last_commit"
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Not a conventional commit, skipping release"
+          fi
+
+  # Release Please - Automated releases
+  release-please:
+    name: Release Please
+    needs: pre-release-validation
+    runs-on: ubuntu-latest
+    if: needs.pre-release-validation.outputs.should_release == 'true'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
+
+    steps:
+      - name: Run Release Please
+        uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          release-type: swift
+          package-name: near-swift-client
+          bump-minor-pre-major: true
+          bump-patch-for-minor-pre-major: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create package-specific tags
+  create-package-tags:
+    name: Create Package Tags
+    needs: release-please
+    runs-on: ubuntu-latest
+    if: needs.release-please.outputs.release_created == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push package tags
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          # Tag for NEARJSONRPCTypes package
+          git tag "types-v${VERSION}" -m "NEARJSONRPCTypes version ${VERSION}"
+
+          # Tag for NEARJSONRPCClient package
+          git tag "client-v${VERSION}" -m "NEARJSONRPCClient version ${VERSION}"
+
+          # Push all tags
+          git push origin "types-v${VERSION}"
+          git push origin "client-v${VERSION}"
+
+          echo "✅ Created tags:"
+          echo "   - types-v${VERSION}"
+          echo "   - client-v${VERSION}"
+
+  # Publish release artifacts
+  publish-release:
+    name: Publish Release
+    needs: [release-please, create-package-tags]
+    runs-on: macos-latest
+    if: needs.release-please.outputs.release_created == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: "5.9"
+
+      - name: Build documentation
+        run: |
+          swift package --allow-writing-to-directory ./docs \
+            generate-documentation --target NEARJSONRPCTypes \
+            --output-path ./docs/types
+
+          swift package --allow-writing-to-directory ./docs \
+            generate-documentation --target NEARJSONRPCClient \
+            --output-path ./docs/client
+
+      - name: Create documentation archive
+        run: |
+          tar -czf documentation.tar.gz docs/
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.release-please.outputs.tag_name }} \
+            documentation.tar.gz \
+            --clobber
+
+      - name: Notify Swift Package Index
+        run: |
+          echo "📦 Notifying Swift Package Index..."
+          # Swift Package Index automatically picks up new releases via webhooks
+          echo "✅ Release ${{ needs.release-please.outputs.tag_name }} is now available"
+
+  # Post-release validation
+  post-release-validation:
+    name: Post-Release Validation
+    needs: [release-please, publish-release]
+    runs-on: macos-latest
+    if: needs.release-please.outputs.release_created == 'true'
+
+    steps:
+      - name: Verify tags exist
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Verify main release tag
+          gh release view ${{ needs.release-please.outputs.tag_name }}
+
+          # Verify package tags
+          git ls-remote --tags origin | grep "types-v${VERSION}"
+          git ls-remote --tags origin | grep "client-v${VERSION}"
+
+          echo "✅ All tags verified"
+
+      - name: Test package resolution
+        run: |
+          # Create temporary test package to verify packages are resolvable
+          mkdir -p /tmp/test-package
+          cd /tmp/test-package
+
+          cat > Package.swift << 'EOF'
+          // swift-tools-version: 5.9
+          import PackageDescription
+
+          let package = Package(
+              name: "TestPackage",
+              platforms: [.macOS(.v13)],
+              dependencies: [
+                  .package(url: "https://github.com/${{ github.repository }}", from: "${{ needs.release-please.outputs.version }}")
+              ],
+              targets: [
+                  .target(
+                      name: "TestPackage",
+                      dependencies: [
+                          .product(name: "NEARJSONRPCTypes", package: "near-swift-client"),
+                          .product(name: "NEARJSONRPCClient", package: "near-swift-client")
+                      ]
+                  )
+              ]
+          )
+          EOF
+
+          # Attempt to resolve packages
+          swift package resolve
+          echo "✅ Packages successfully resolved"
+
+  # Update package registry listings
+  update-registries:
+    name: Update Package Registries
+    needs: [release-please, post-release-validation]
+    runs-on: ubuntu-latest
+    if: needs.release-please.outputs.release_created == 'true'
+
+    steps:
+      - name: Trigger Swift Package Index update
+        run: |
+          echo "📋 Swift Package Index will automatically index the new release"
+          echo "   Monitor at: https://swiftpackageindex.com/${{ github.repository }}"
+
+      - name: Update README badges
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update version in README
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          # Update version badge in README if it exists
+          if grep -q "shield.io/badge/version" README.md; then
+            sed -i "s/version-[0-9.]*-/version-${VERSION}-/" README.md
+
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs: update version badge to ${VERSION}" || true
+            git push || true
+          fi
+
+      - name: Create release summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🎉 Release Published Successfully
+
+          ## Version: ${{ needs.release-please.outputs.version }}
+
+          ### Packages Released:
+          - 📦 NEARJSONRPCTypes (types-v${{ needs.release-please.outputs.version }})
+          - 📦 NEARJSONRPCClient (client-v${{ needs.release-please.outputs.version }})
+
+          ### Usage:
+          \`\`\`swift
+          dependencies: [
+              .package(url: "https://github.com/${{ github.repository }}", from: "${{ needs.release-please.outputs.version }}")
+          ]
+          \`\`\`
+
+          ### Links:
+          - [Release Notes](https://github.com/${{ github.repository }}/releases/tag/${{ needs.release-please.outputs.tag_name }})
+          - [Swift Package Index](https://swiftpackageindex.com/${{ github.repository }})
+          - [Documentation](https://github.com/${{ github.repository }}/blob/main/README.md)
+
+          ### Next Steps:
+          - Monitor Swift Package Index for indexing
+          - Update dependent projects
+          - Announce release in community channels
+          EOF

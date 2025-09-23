@@ -1,0 +1,99 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: "5.9"
+        
+    - name: Build
+      run: swift build
+      
+    - name: Run tests
+      run: swift test --enable-code-coverage
+
+    - name: Generate coverage report
+      run: |
+        xcrun llvm-cov export \
+          .build/debug/near-swift-clientPackageTests.xctest/Contents/MacOS/near-swift-clientPackageTests \
+          -instr-profile .build/debug/codecov/default.profdata \
+          -format="lcov" > coverage.lcov
+
+    - name: Check coverage threshold
+      run: |
+        # Extract coverage percentage from lcov
+        COVERAGE=$(lcov --summary coverage.lcov 2>&1 | grep "lines......:" | awk '{print $2}' | sed 's/%//')
+        echo "Current coverage: ${COVERAGE}%"
+
+        # Enforce 80% minimum coverage
+        THRESHOLD=80
+        if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+          echo "❌ Coverage ${COVERAGE}% is below threshold ${THRESHOLD}%"
+          exit 1
+        else
+          echo "✅ Coverage ${COVERAGE}% meets threshold ${THRESHOLD}%"
+        fi
+      continue-on-error: false
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.lcov
+        fail_ci_if_error: true
+        flags: unittests
+
+    - name: Generate HTML coverage report
+      run: |
+        xcrun llvm-cov show \
+          .build/debug/near-swift-clientPackageTests.xctest/Contents/MacOS/near-swift-clientPackageTests \
+          -instr-profile .build/debug/codecov/default.profdata \
+          -format="html" > coverage.html
+
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage.html
+        
+  test-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: swift:5.9
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build
+      run: swift build
+      
+    - name: Run tests
+      run: swift test
+      
+  lint:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: "5.9"
+        
+    - name: Install SwiftLint
+      run: brew install swiftlint
+      
+    - name: Run SwiftLint
+      run: swiftlint
