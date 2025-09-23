@@ -1,0 +1,99 @@
+version: 1
+
+# Swift Package Index Configuration for NEAR Swift Client
+
+# Builder configuration
+builder:
+  configs:
+    # iOS builds
+    - platform: ios
+      scheme: NEARJSONRPCClient
+      destination: "generic/platform=iOS"
+
+    - platform: ios
+      scheme: NEARJSONRPCTypes
+      destination: "generic/platform=iOS"
+
+    # macOS builds
+    - platform: macos
+      scheme: NEARJSONRPCClient
+      destination: "platform=macOS"
+
+    - platform: macos
+      scheme: NEARJSONRPCTypes
+      destination: "platform=macOS"
+
+    # tvOS builds
+    - platform: tvos
+      scheme: NEARJSONRPCClient
+      destination: "generic/platform=tvOS"
+
+    - platform: tvos
+      scheme: NEARJSONRPCTypes
+      destination: "generic/platform=tvOS"
+
+    # watchOS builds
+    - platform: watchos
+      scheme: NEARJSONRPCClient
+      destination: "generic/platform=watchOS"
+
+    - platform: watchos
+      scheme: NEARJSONRPCTypes
+      destination: "generic/platform=watchOS"
+
+    # visionOS builds
+    - platform: visionos
+      scheme: NEARJSONRPCClient
+      destination: "generic/platform=visionOS"
+
+    - platform: visionos
+      scheme: NEARJSONRPCTypes
+      destination: "generic/platform=visionOS"
+
+    # Linux builds
+    - platform: linux
+      scheme: NEARJSONRPCClient
+
+    - platform: linux
+      scheme: NEARJSONRPCTypes
+
+# Documentation configuration
+documentation:
+  # Generate DocC documentation
+  targets:
+    - NEARJSONRPCTypes
+    - NEARJSONRPCClient
+
+# Metadata
+metadata:
+  # Package description
+  description: "Swift client libraries for NEAR Protocol JSON-RPC API"
+
+  # Topics/categories for Swift Package Index
+  topics:
+    - blockchain
+    - near-protocol
+    - json-rpc
+    - swift
+    - ios
+    - macos
+    - api-client
+    - web3
+
+  # License
+  license: MIT
+
+  # Authors
+  authors:
+    - name: "NEAR Swift Client Contributors"
+      url: "https://github.com/kamalbuilds"
+
+  # Links
+  documentation_url: "https://github.com/kamalbuilds/near-swift-client/blob/main/README.md"
+  homepage_url: "https://near.org"
+  repository_url: "https://github.com/kamalbuilds/near-swift-client"
+
+  # Funding
+  funding:
+    - type: github
+      username: kamalbuilds
