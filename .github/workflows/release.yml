@@ -47,6 +47,8 @@ jobs:
         run: swift build
 
       - name: Run all tests
+        env:
+          SKIP_NETWORK_TESTS: "1"
         run: swift test --enable-code-coverage
 
       - name: Generate coverage report

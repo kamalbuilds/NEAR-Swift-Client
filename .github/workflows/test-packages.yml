@@ -25,6 +25,8 @@ jobs:
 
       - name: Test NEARJSONRPCTypes
         working-directory: ./NEARJSONRPCTypes
+        env:
+          SKIP_NETWORK_TESTS: "1"
         run: swift test -v
 
   test-client-package:
@@ -45,6 +47,8 @@ jobs:
 
       - name: Test NEARJSONRPCClient
         working-directory: ./NEARJSONRPCClient
+        env:
+          SKIP_NETWORK_TESTS: "1"
         run: swift test -v
 
   test-integration:
@@ -63,6 +67,8 @@ jobs:
         run: swift build -v
 
       - name: Test All Packages
+        env:
+          SKIP_NETWORK_TESTS: "1"
         run: swift test -v
 
   verify-independence:
