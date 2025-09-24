@@ -149,7 +149,10 @@ final class MethodTests: XCTestCase {
         )
 
         XCTAssertEqual(mockAccount.locked, "500000000000000000000000")
-        XCTAssertGreaterThan(Int(mockAccount.locked) ?? 0, 0)
+        // NEAR balances are large numbers stored as strings (yoctoNEAR)
+        // Can't convert to Int due to overflow, so verify it's a non-empty string
+        XCTAssertFalse(mockAccount.locked.isEmpty)
+        XCTAssertGreaterThan(mockAccount.locked.count, 0)
     }
 
     func testViewAccountNonExistent() async throws {

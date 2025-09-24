@@ -9,7 +9,7 @@ final class ClientTests: XCTestCase {
     override func setUp() {
         super.setUp()
         // Use testnet for testing
-        client = try! NEARClient(url: "https://rpc.testnet.near.org")
+        client = try! NEARClient(url: "https://test.rpc.fastnear.com")
     }
     
     func testClientInitialization() {

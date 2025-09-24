@@ -33,6 +33,23 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]
+        ),
+        // Tests
+        .testTarget(
+            name: "NEARJSONRPCTypesTests",
+            dependencies: [
+                .product(name: "NEARJSONRPCTypes", package: "NEARJSONRPCTypes")
+            ]
+        ),
+        .testTarget(
+            name: "NEARJSONRPCClientTests",
+            dependencies: [
+                .product(name: "NEARJSONRPCClient", package: "NEARJSONRPCClient")
+            ]
+        ),
+        .testTarget(
+            name: "GenerateTests",
+            dependencies: ["Generate"]
         )
     ]
 )
