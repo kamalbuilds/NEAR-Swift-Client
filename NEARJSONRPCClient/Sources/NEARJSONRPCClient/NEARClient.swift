@@ -8,7 +8,7 @@ public class NEARClient {
     public init(url: String = "https://rpc.testnet.near.org") throws {
         guard let serverURL = URL(string: url),
               let scheme = serverURL.scheme?.lowercased(),
-              (scheme == "http" || scheme == "https"),
+              scheme == "http" || scheme == "https",
               serverURL.host != nil else {
             throw NEARClientError.invalidURL
         }

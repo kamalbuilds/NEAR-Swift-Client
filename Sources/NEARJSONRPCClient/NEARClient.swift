@@ -251,8 +251,8 @@ public class NEARClient {
 // MARK: - Supporting Types
 
 public enum Finality: String {
-    case final = "final"
-    case optimistic = "optimistic"
+    case final
+    case optimistic
 }
 
 public enum BlockReference {
