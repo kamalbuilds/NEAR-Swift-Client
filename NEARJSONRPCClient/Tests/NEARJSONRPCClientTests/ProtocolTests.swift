@@ -5,7 +5,6 @@ import Foundation
 
 /// Protocol-level tests for edge cases, concurrency, error handling
 final class ProtocolTests: XCTestCase {
-
     // MARK: - Concurrent Request Tests (5 tests)
 
     func testConcurrentStatusRequests() async throws {
@@ -411,13 +410,13 @@ final class ProtocolTests: XCTestCase {
     }
 
     func testBlockReference() {
-        let heightRef = BlockReference.height(100000)
+        let heightRef = BlockReference.height(100_000)
         let hashRef = BlockReference.hash("abc123")
         let finalityRef = BlockReference.finality(.final)
 
         // Test pattern matching
         if case .height(let h) = heightRef {
-            XCTAssertEqual(h, 100000)
+            XCTAssertEqual(h, 100_000)
         } else {
             XCTFail("Expected height reference")
         }

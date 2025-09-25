@@ -196,9 +196,9 @@ public class NEARClient {
         let params = GasPriceParams(
             blockId: blockId.map { ref in
                 switch ref {
-                case .height(let h): return String(h)
-                case .hash(let h): return h
-                case .finality(let f): return f.rawValue
+                case .height(let height): return String(height)
+                case .hash(let hash): return hash
+                case .finality(let finality): return finality.rawValue
                 }
             }
         )
@@ -221,9 +221,9 @@ public class NEARClient {
         let params = ValidatorsParams(
             blockId: blockId.map { ref in
                 switch ref {
-                case .height(let h): return String(h)
-                case .hash(let h): return h
-                case .finality(let f): return f.rawValue
+                case .height(let height): return String(height)
+                case .hash(let hash): return hash
+                case .finality(let finality): return finality.rawValue
                 }
             }
         )
@@ -239,8 +239,8 @@ public class NEARClient {
 // MARK: - Supporting Types
 
 public enum Finality: String {
-    case final = "final"
-    case optimistic = "optimistic"
+    case final
+    case optimistic
 }
 
 public enum BlockReference {

@@ -43,14 +43,20 @@ struct Generate: AsyncParsableCommand {
             print("📄 Loading local OpenAPI spec from: \(localSpecPath)")
             return try Data(contentsOf: URL(fileURLWithPath: localSpecPath))
         } else {
+            #if os(Linux)
+            // URLSession is not available on Linux, fall back to local file
+            print("⚠️  URLSession not available on Linux, using local OpenAPI spec from: \(localSpecPath)")
+            return try Data(contentsOf: URL(fileURLWithPath: localSpecPath))
+            #else
             print("⬇️  Downloading OpenAPI spec from: \(specURL)")
             let url = URL(string: specURL)!
             let (data, _) = try await URLSession.shared.data(from: url)
-            
+
             // Save for future reference
             try data.write(to: URL(fileURLWithPath: localSpecPath))
-            
+
             return data
+            #endif
         }
     }
     
@@ -60,7 +66,7 @@ struct Generate: AsyncParsableCommand {
         var spec = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         
         // Patch: All operations should use the same path "/"
-        if var paths = spec["paths"] as? [String: Any] {
+        if let paths = spec["paths"] as? [String: Any] {
             var newPaths: [String: Any] = [:]
             var rootPath: [String: Any] = [:]
             
