@@ -214,28 +214,32 @@ public class NEARClient {
     }
     
     // MARK: - Validators
-    
+
     /// Get current validators
     public func validators(blockId: BlockReference? = nil) async throws -> ValidatorStakeView {
+        let blockIdString = blockId.map(convertBlockReferenceToString)
+
         struct ValidatorsParams: Encodable {
             let blockId: String?
         }
-        
-        let params = ValidatorsParams(
-            blockId: blockId.map { ref in
-                switch ref {
-                case .height(let height): return String(height)
-                case .hash(let hash): return hash
-                case .finality(let finality): return finality.rawValue
-                }
-            }
-        )
-        
+
+        let params = ValidatorsParams(blockId: blockIdString)
+
         return try await transport.call(
             method: "validators",
             params: params,
             resultType: ValidatorStakeView.self
         )
+    }
+
+    // MARK: - Helper Methods
+
+    private func convertBlockReferenceToString(_ ref: BlockReference) -> String {
+        switch ref {
+        case .height(let height): return String(height)
+        case .hash(let hash): return hash
+        case .finality(let finality): return finality.rawValue
+        }
     }
 }
 

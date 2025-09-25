@@ -94,13 +94,16 @@ struct Generate: AsyncParsableCommand {
         }
         
         // Add JSON-RPC specific server configuration
-        spec["servers"] = [[
-            "url": "https://rpc.testnet.near.org",
-            "description": "NEAR Testnet RPC"
-        ], [
-            "url": "https://rpc.mainnet.near.org",
-            "description": "NEAR Mainnet RPC"
-        ]]
+        spec["servers"] = [
+            [
+                "url": "https://rpc.testnet.near.org",
+                "description": "NEAR Testnet RPC"
+            ],
+            [
+                "url": "https://rpc.mainnet.near.org",
+                "description": "NEAR Mainnet RPC"
+            ]
+        ]
         
         return try JSONSerialization.data(withJSONObject: spec, options: .prettyPrinted)
     }
@@ -157,8 +160,16 @@ struct Generate: AsyncParsableCommand {
         convertProcess.arguments = [
             "-c",
             """
+            import sys
             import json
-            import yaml
+            try:
+                import yaml
+            except ImportError:
+                print("PyYAML not found, attempting pip install...", file=sys.stderr)
+                import subprocess
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "PyYAML"])
+                import yaml
+
             with open('\(tempJSONPath)', 'r') as f:
                 data = json.load(f)
             with open('\(tempYAMLPath)', 'w') as f:

@@ -62,7 +62,6 @@ do {
     print("3. JSONRPCWrapper will handle protocol translation")
     print("")
     print("For more details, see: docs/JSON-RPC-ARCHITECTURE.md")
-
 } catch {
     print("❌ Error: \(error.localizedDescription)")
     exit(1)

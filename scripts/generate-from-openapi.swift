@@ -10,6 +10,7 @@ let currentPath = fileManager.currentDirectoryPath
 // Download OpenAPI spec
 print("📥 Downloading NEAR OpenAPI spec...")
 let specURL = URL(string: "https://raw.githubusercontent.com/near/nearcore/master/chain/jsonrpc/openapi/openapi.json")!
+
 let specData = try Data(contentsOf: specURL)
 
 // Parse and patch the spec
@@ -80,6 +81,7 @@ if var paths = spec["paths"] as? [String: Any] {
 // Save patched spec
 print("💾 Saving patched spec...")
 let patchedData = try JSONSerialization.data(withJSONObject: spec, options: .prettyPrinted)
+
 try patchedData.write(to: URL(fileURLWithPath: "openapi-patched.json"))
 
 // Generate type mappings for snake_case to camelCase

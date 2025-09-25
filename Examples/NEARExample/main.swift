@@ -43,8 +43,10 @@ struct NEARExample {
             print("📞 Contract View Call:")
             let contractId = "guest-book.testnet"
             let methodName = "getMessages"
-            let args = "{}".data(using: .utf8)!
-            
+            guard let args = "{}".data(using: .utf8) else {
+                throw NEARClientError.encodingError
+            }
+
             let functionResult = try await client.callFunction(
                 accountId: contractId,
                 methodName: methodName,
@@ -57,9 +59,9 @@ struct NEARExample {
                 print("  Method: \(methodName)")
                 print("  Result: \(resultString.prefix(100))...")
             }
-            
+
             print("\n✅ Example completed successfully!")
-            
+
         } catch NEARClientError.invalidURL {
             print("❌ Error: Invalid RPC URL")
         } catch let error as JSONRPCError {

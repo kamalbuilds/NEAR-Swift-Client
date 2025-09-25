@@ -118,7 +118,7 @@ public enum AccessKeyPermission: Codable {
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        if let _ = try? container.decode(String.self) {
+        if (try? container.decode(String.self)) != nil {
             self = .fullAccess
         } else {
             let functionCallContainer = try decoder.container(keyedBy: CodingKeys.self)
