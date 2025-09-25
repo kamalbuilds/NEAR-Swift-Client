@@ -149,7 +149,12 @@ final class MethodTests: XCTestCase {
         )
 
         XCTAssertEqual(mockAccount.locked, "500000000000000000000000")
-        XCTAssertGreaterThan(Int(mockAccount.locked) ?? 0, 0)
+        // Verify locked is a non-empty numeric string (avoid Int overflow with large yoctoNEAR values)
+        XCTAssertFalse(mockAccount.locked.isEmpty, "Locked should not be empty")
+        XCTAssertGreaterThan(mockAccount.locked.count, 0, "Locked should have positive length")
+        // Verify it's a valid decimal number
+        XCTAssertNotNil(Decimal(string: mockAccount.locked), "Locked should be a valid decimal")
+        XCTAssertGreaterThan(Decimal(string: mockAccount.locked) ?? 0, Decimal(0), "Locked should be greater than 0")
     }
 
     func testViewAccountNonExistent() async throws {

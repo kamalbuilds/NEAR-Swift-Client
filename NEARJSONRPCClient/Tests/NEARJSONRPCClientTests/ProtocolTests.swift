@@ -393,7 +393,7 @@ final class ProtocolTests: XCTestCase {
         let testData = "Hello, NEAR!".data(using: .utf8)!
         let base64 = testData.base64EncodedString()
 
-        XCTAssertEqual(base64, "SGVsbG8sIE5FQVIE")
+        XCTAssertEqual(base64, "SGVsbG8sIE5FQVIh")
 
         // Test round-trip
         let decoded = Data(base64Encoded: base64)!

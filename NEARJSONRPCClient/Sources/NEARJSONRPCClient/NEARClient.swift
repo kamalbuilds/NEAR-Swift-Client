@@ -6,7 +6,10 @@ public class NEARClient {
     private let transport: JSONRPCTransport
     
     public init(url: String = "https://rpc.testnet.near.org") throws {
-        guard let serverURL = URL(string: url) else {
+        guard let serverURL = URL(string: url),
+              let scheme = serverURL.scheme?.lowercased(),
+              (scheme == "http" || scheme == "https"),
+              serverURL.host != nil else {
             throw NEARClientError.invalidURL
         }
         self.transport = JSONRPCTransport(baseURL: serverURL)
