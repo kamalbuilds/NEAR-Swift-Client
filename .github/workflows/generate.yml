@@ -74,10 +74,29 @@ jobs:
     - name: Generate coverage report
       if: steps.spec-check.outputs.changed == 'true'
       run: |
-        xcrun llvm-cov export \
-          .build/debug/near-swift-clientPackageTests.xctest/Contents/MacOS/near-swift-clientPackageTests \
-          -instr-profile .build/debug/codecov/default.profdata \
-          -format="lcov" > coverage.lcov
+        PROFDATA=$(find NEARJSONRPCTypes/.build -name "default.profdata" | head -1)
+        TESTBIN=$(find NEARJSONRPCTypes/.build -name "*.xctest" | head -1)
+        
+        if [ -n "$PROFDATA" ] && [ -n "$TESTBIN" ]; then
+          if [ -f "$TESTBIN/Contents/MacOS/near-swift-clientPackageTests" ]; then
+            xcrun llvm-cov export \
+              "$TESTBIN/Contents/MacOS/near-swift-clientPackageTests" \
+              -instr-profile "$PROFDATA" \
+              -format="lcov" > coverage.lcov
+          else
+            # Try to find the actual test binary
+            BINARY=$(find "$TESTBIN" -type f -executable | head -1)
+            if [ -n "$BINARY" ]; then
+              xcrun llvm-cov export \
+                "$BINARY" \
+                -instr-profile "$PROFDATA" \
+                -format="lcov" > coverage.lcov
+            fi
+          fi
+        else
+          echo "Warning: Could not find profdata or test binary, skipping coverage report"
+          touch coverage.lcov
+        fi
           
     - name: Upload coverage
       if: steps.spec-check.outputs.changed == 'true'
