@@ -82,7 +82,8 @@ jobs:
           mkdir -p /tmp/test-types
           cd /tmp/test-types
           swift package init --type library --name TestTypes
-          cat > Package.swift << 'EOF'
+          WORKSPACE_PATH="${{ github.workspace }}"
+          cat > Package.swift << EOF
           // swift-tools-version: 5.9
           import PackageDescription
 
@@ -90,7 +91,7 @@ jobs:
               name: "TestTypes",
               platforms: [.macOS(.v13)],
               dependencies: [
-                  .package(path: "${{ github.workspace }}/NEARJSONRPCTypes")
+                  .package(path: "$WORKSPACE_PATH/NEARJSONRPCTypes")
               ],
               targets: [
                   .target(
@@ -109,7 +110,8 @@ jobs:
           mkdir -p /tmp/test-client
           cd /tmp/test-client
           swift package init --type library --name TestClient
-          cat > Package.swift << 'EOF'
+          WORKSPACE_PATH="${{ github.workspace }}"
+          cat > Package.swift << EOF
           // swift-tools-version: 5.9
           import PackageDescription
 
@@ -117,7 +119,7 @@ jobs:
               name: "TestClient",
               platforms: [.macOS(.v13)],
               dependencies: [
-                  .package(path: "${{ github.workspace }}/NEARJSONRPCClient")
+                  .package(path: "$WORKSPACE_PATH/NEARJSONRPCClient")
               ],
               targets: [
                   .target(

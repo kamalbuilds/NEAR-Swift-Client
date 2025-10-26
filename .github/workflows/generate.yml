@@ -104,6 +104,8 @@ jobs:
       with:
         file: ./coverage.lcov
         flags: unittests
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
         
     - name: Create Pull Request
       if: steps.spec-check.outputs.changed == 'true'
