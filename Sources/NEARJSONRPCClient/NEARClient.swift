@@ -197,9 +197,9 @@ public class NEARClient {
         let params = GasPriceParams(
             blockId: blockId.map { ref in
                 switch ref {
-                case .height(let h): return String(h)
-                case .hash(let h): return h
-                case .finality(let f): return f.rawValue
+                case .height(let height): return String(height)
+                case .hash(let hashValue): return hashValue
+                case .finality(let finalityValue): return finalityValue.rawValue
                 }
             }
         )
@@ -227,9 +227,9 @@ public class NEARClient {
 
             let blockIdString: String
             switch blockId {
-            case .height(let h): blockIdString = String(h)
-            case .hash(let h): blockIdString = h
-            case .finality(let f): blockIdString = f.rawValue
+            case .height(let height): blockIdString = String(height)
+            case .hash(let hashValue): blockIdString = hashValue
+            case .finality(let finalityValue): blockIdString = finalityValue.rawValue
             }
 
             return try await transport.call(

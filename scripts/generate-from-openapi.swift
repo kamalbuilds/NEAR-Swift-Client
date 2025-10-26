@@ -14,7 +14,9 @@ let specData = try Data(contentsOf: specURL)
 
 // Parse and patch the spec
 print("🔧 Patching OpenAPI spec for JSON-RPC...")
-var spec = try JSONSerialization.jsonObject(with: specData) as! [String: Any]
+guard var spec = try JSONSerialization.jsonObject(with: specData) as? [String: Any] else {
+    fatalError("Invalid OpenAPI spec format")
+}
 
 // Patch: Convert all paths to use single "/" endpoint for JSON-RPC
 if var paths = spec["paths"] as? [String: Any] {
@@ -44,9 +46,9 @@ if var paths = spec["paths"] as? [String: Any] {
             "content": [
                 "application/json": [
                     "schema": [
-                        "oneOf": allOperations.compactMap { op in
-                            if let methodName = op["x-jsonrpc-method"] as? String,
-                               let requestBody = op["requestBody"] as? [String: Any],
+                        "oneOf": allOperations.compactMap { operation in
+                            if let methodName = operation["x-jsonrpc-method"] as? String,
+                               let requestBody = operation["requestBody"] as? [String: Any],
                                let content = requestBody["content"] as? [String: Any],
                                let appJson = content["application/json"] as? [String: Any],
                                let schema = appJson["schema"] as? [String: Any] {
