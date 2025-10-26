@@ -2,6 +2,9 @@ import XCTest
 @testable import NEARJSONRPCClient
 @testable import NEARJSONRPCTypes
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Protocol-level tests for edge cases, concurrency, error handling
 final class ProtocolTests: XCTestCase {

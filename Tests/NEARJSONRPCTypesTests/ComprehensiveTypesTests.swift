@@ -620,7 +620,7 @@ final class ComprehensiveTypesTests: XCTestCase {
     }
 
     func testValidatorKickoutDecoding() throws {
-        let json = """
+        _ = """
         {
             "account_id": "kicked.near",
             "reason": "Unstaked"
