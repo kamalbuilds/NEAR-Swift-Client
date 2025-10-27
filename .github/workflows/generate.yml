@@ -46,6 +46,8 @@ jobs:
     - name: Generate Swift client
       if: steps.spec-check.outputs.changed == 'true'
       run: |
+        # Install PyYAML for JSON to YAML conversion
+        pip3 install PyYAML
         swift run generate
         cp openapi.json openapi-cached.json
 
