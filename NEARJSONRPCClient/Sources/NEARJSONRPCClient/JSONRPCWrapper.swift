@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import OpenAPIRuntime
 import OpenAPIURLSession
 
@@ -95,7 +98,20 @@ public class JSONRPCTransport {
         httpRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         httpRequest.httpBody = requestData
         
-        let (data, response) = try await session.data(for: httpRequest)
+        // Use compatibility wrapper for URLSession.data across platforms
+        let (data, response): (Data, URLResponse) = try await withCheckedThrowingContinuation { continuation in
+            session.dataTask(with: httpRequest) { data, response, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let data = data, let response = response else {
+                    continuation.resume(throwing: NEARClientError.invalidResponse)
+                    return
+                }
+                continuation.resume(returning: (data, response))
+            }.resume()
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NEARClientError.invalidResponse

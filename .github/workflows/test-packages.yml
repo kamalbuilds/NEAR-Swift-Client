@@ -82,7 +82,7 @@ jobs:
           mkdir -p /tmp/test-types
           cd /tmp/test-types
           swift package init --type library --name TestTypes
-          cat > Package.swift << 'EOF'
+          cat > Package.swift << EOF
           // swift-tools-version: 5.9
           import PackageDescription
 
@@ -109,7 +109,7 @@ jobs:
           mkdir -p /tmp/test-client
           cd /tmp/test-client
           swift package init --type library --name TestClient
-          cat > Package.swift << 'EOF'
+          cat > Package.swift << EOF
           // swift-tools-version: 5.9
           import PackageDescription
 

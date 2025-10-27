@@ -17,13 +17,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v1
-      with:
-        swift-version: "5.9"
         
     - name: Cache Swift packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .build
         key: ${{ runner.os }}-swift-${{ hashFiles('Package.resolved') }}
@@ -74,21 +70,42 @@ jobs:
     - name: Generate coverage report
       if: steps.spec-check.outputs.changed == 'true'
       run: |
-        xcrun llvm-cov export \
-          .build/debug/near-swift-clientPackageTests.xctest/Contents/MacOS/near-swift-clientPackageTests \
-          -instr-profile .build/debug/codecov/default.profdata \
-          -format="lcov" > coverage.lcov
+        PROFDATA=$(find NEARJSONRPCTypes/.build -name "default.profdata" | head -1)
+        TESTBIN=$(find NEARJSONRPCTypes/.build -name "*.xctest" | head -1)
+        
+        if [ -n "$PROFDATA" ] && [ -n "$TESTBIN" ]; then
+          if [ -f "$TESTBIN/Contents/MacOS/near-swift-clientPackageTests" ]; then
+            xcrun llvm-cov export \
+              "$TESTBIN/Contents/MacOS/near-swift-clientPackageTests" \
+              -instr-profile "$PROFDATA" \
+              -format="lcov" > coverage.lcov
+          else
+            # Try to find the actual test binary
+            BINARY=$(find "$TESTBIN" -type f -executable | head -1)
+            if [ -n "$BINARY" ]; then
+              xcrun llvm-cov export \
+                "$BINARY" \
+                -instr-profile "$PROFDATA" \
+                -format="lcov" > coverage.lcov
+            fi
+          fi
+        else
+          echo "Warning: Could not find profdata or test binary, skipping coverage report"
+          touch coverage.lcov
+        fi
           
     - name: Upload coverage
       if: steps.spec-check.outputs.changed == 'true'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: ./coverage.lcov
         flags: unittests
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
         
     - name: Create Pull Request
       if: steps.spec-check.outputs.changed == 'true'
-      uses: peter-evans/create-pull-request@v5
+      uses: peter-evans/create-pull-request@v7
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: "chore: update generated code from OpenAPI spec"

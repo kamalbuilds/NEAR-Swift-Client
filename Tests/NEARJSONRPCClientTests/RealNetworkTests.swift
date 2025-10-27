@@ -15,6 +15,10 @@ final class RealNetworkTests: XCTestCase {
     
     /// Test actual network status call
     func testRealNetworkStatus() async throws {
+        guard ProcessInfo.processInfo.environment["SKIP_NETWORK_TESTS"] == nil else {
+            throw XCTSkip("Skipping network test")
+        }
+        
         let status = try await client.status()
         
         // Verify we get valid responses
@@ -32,6 +36,10 @@ final class RealNetworkTests: XCTestCase {
     
     /// Test querying a known testnet account
     func testRealAccountQuery() async throws {
+        guard ProcessInfo.processInfo.environment["SKIP_NETWORK_TESTS"] == nil else {
+            throw XCTSkip("Skipping network test")
+        }
+        
         do {
             // "guest-book.testnet" is a known contract on testnet
             let account = try await client.viewAccount(accountId: "guest-book.testnet")
@@ -52,6 +60,10 @@ final class RealNetworkTests: XCTestCase {
     
     /// Test block query
     func testRealBlockQuery() async throws {
+        guard ProcessInfo.processInfo.environment["SKIP_NETWORK_TESTS"] == nil else {
+            throw XCTSkip("Skipping network test")
+        }
+        
         let block = try await client.block(finality: .final)
         
         XCTAssertGreaterThan(block.header.height, 0)
@@ -67,6 +79,10 @@ final class RealNetworkTests: XCTestCase {
     
     /// Test gas price query
     func testRealGasPrice() async throws {
+        guard ProcessInfo.processInfo.environment["SKIP_NETWORK_TESTS"] == nil else {
+            throw XCTSkip("Skipping network test")
+        }
+        
         let gasPrice = try await client.gasPrice()
         
         XCTAssertFalse(gasPrice.gasPrice.isEmpty)
@@ -78,6 +94,10 @@ final class RealNetworkTests: XCTestCase {
     
     /// Test validators query
     func testRealValidators() async throws {
+        guard ProcessInfo.processInfo.environment["SKIP_NETWORK_TESTS"] == nil else {
+            throw XCTSkip("Skipping network test")
+        }
+        
         do {
             let validators = try await client.validators()
 

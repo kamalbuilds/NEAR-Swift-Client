@@ -63,7 +63,9 @@ struct Generate: AsyncParsableCommand {
     private func patchOpenAPISpec(_ data: Data) throws -> Data {
         print("🔧 Patching OpenAPI spec for JSON-RPC compatibility...")
         
-        var spec = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        guard var spec = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "OpenAPIError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid OpenAPI spec format"])
+        }
         
         // Patch: All operations should use the same path "/"
         if let paths = spec["paths"] as? [String: Any] {
@@ -73,15 +75,15 @@ struct Generate: AsyncParsableCommand {
             for (path, operations) in paths {
                 if let ops = operations as? [String: Any] {
                     for (method, operation) in ops {
-                        if var op = operation as? [String: Any] {
+                        if var operation = operation as? [String: Any] {
                             // Extract the method name from the path
                             let methodName = path.replacingOccurrences(of: "/", with: "")
                             
                             // Add JSON-RPC method parameter
-                            op["x-jsonrpc-method"] = methodName
+                            operation["x-jsonrpc-method"] = methodName
                             
                             // Move all operations to root path
-                            rootPath[method] = op
+                            rootPath[method] = operation
                         }
                     }
                 }

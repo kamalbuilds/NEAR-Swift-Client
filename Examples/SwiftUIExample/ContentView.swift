@@ -82,8 +82,12 @@ class NEARViewModel: ObservableObject {
         do {
             self.client = try NEARClient(url: "https://rpc.testnet.near.org")
         } catch {
-            // Default to testnet, handle error in UI
-            self.client = try! NEARClient()
+            // Default to testnet if custom URL fails
+            do {
+                self.client = try NEARClient()
+            } catch {
+                fatalError("Failed to initialize NEAR client: \(error)")
+            }
         }
     }
     

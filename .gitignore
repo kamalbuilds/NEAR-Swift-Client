@@ -27,3 +27,9 @@ hive-mind-prompt-*.txt
 
 .claude-flow
 .build
+
+# Swift coverage files
+*.profraw
+*.profdata
+coverage.lcov
+coverage.html
