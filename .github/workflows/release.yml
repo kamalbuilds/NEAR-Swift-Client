@@ -76,17 +76,12 @@ jobs:
       - name: Check coverage threshold
         run: |
           if [ -s coverage.lcov ]; then
-            # Try different parsing methods for lcov output
-            coverage=$(lcov --summary coverage.lcov 2>&1 | grep -E 'lines\.*:' | grep -oE '[0-9]+\.[0-9]+%' | grep -oE '[0-9]+\.[0-9]+' | head -1 || echo "")
-            
-            if [ -z "$coverage" ]; then
-              # Fallback: try alternate parsing
-              coverage=$(lcov --summary coverage.lcov 2>&1 | grep lines | awk '{print $2}' | tr -d '%' | head -1 || echo "")
-            fi
+            # Parse coverage percentage from lcov output
+            coverage=$(lcov --summary coverage.lcov 2>&1 | awk '/lines.*:/ {gsub(/%/, "", $2); print $2}' | head -1)
             
             echo "Coverage: ${coverage}%"
             
-            if [ -n "$coverage" ] && [ "$coverage" != "" ]; then
+            if [ -n "$coverage" ]; then
               # Use awk for floating point comparison (more portable than bc)
               if awk -v cov="$coverage" 'BEGIN { exit (cov < 80) ? 0 : 1 }'; then
                 echo "❌ Coverage ${coverage}% is below 80% threshold"
