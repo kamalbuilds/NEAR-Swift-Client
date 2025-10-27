@@ -14,6 +14,14 @@ let package = Package(
         .visionOS(.v1)
     ],
     products: [
+        .library(
+            name: "NEARJSONRPCTypes",
+            targets: ["NEARJSONRPCTypesPublic"]
+        ),
+        .library(
+            name: "NEARJSONRPCClient",
+            targets: ["NEARJSONRPCClientPublic"]
+        ),
         .executable(
             name: "generate",
             targets: ["Generate"]
@@ -27,6 +35,21 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0")
     ],
     targets: [
+        // Re-export targets for library products
+        .target(
+            name: "NEARJSONRPCTypesPublic",
+            dependencies: [
+                .product(name: "NEARJSONRPCTypes", package: "NEARJSONRPCTypes")
+            ],
+            path: "Sources/NEARJSONRPCTypesPublic"
+        ),
+        .target(
+            name: "NEARJSONRPCClientPublic",
+            dependencies: [
+                .product(name: "NEARJSONRPCClient", package: "NEARJSONRPCClient")
+            ],
+            path: "Sources/NEARJSONRPCClientPublic"
+        ),
         // Code generation executable
         .executableTarget(
             name: "Generate",
