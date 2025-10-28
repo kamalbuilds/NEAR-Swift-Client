@@ -12,7 +12,10 @@ on:
 jobs:
   generate:
     runs-on: macos-latest
-    
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -131,11 +134,12 @@ jobs:
     needs: generate
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
-    - uses: google-github-actions/release-please-action@v3
+    - uses: googleapis/release-please-action@v4
       with:
-        release-type: swift
-        package-name: near-swift-client
-        bump-minor-pre-major: true
-        bump-patch-for-minor-pre-major: true
+        release-type: simple
+        token: ${{ secrets.GITHUB_TOKEN }}

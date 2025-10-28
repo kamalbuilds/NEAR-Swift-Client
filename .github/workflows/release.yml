@@ -134,6 +134,9 @@ jobs:
     needs: pre-release-validation
     runs-on: ubuntu-latest
     if: needs.pre-release-validation.outputs.should_release == 'true'
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -141,13 +144,10 @@ jobs:
 
     steps:
       - name: Run Release Please
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v4
         id: release
         with:
-          release-type: swift
-          package-name: near-swift-client
-          bump-minor-pre-major: true
-          bump-patch-for-minor-pre-major: true
+          release-type: simple
           token: ${{ secrets.GITHUB_TOKEN }}
 
   # Create package-specific tags

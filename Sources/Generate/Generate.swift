@@ -162,12 +162,30 @@ struct Generate: AsyncParsableCommand {
             """
             import sys
             import json
+            import site
+
+            # Add user site-packages to path (needed when pip installs to user directory)
+            user_site = site.getusersitepackages()
+            if user_site not in sys.path:
+                sys.path.insert(0, user_site)
+
             try:
                 import yaml
             except ImportError:
                 print("PyYAML not found, attempting pip install...", file=sys.stderr)
                 import subprocess
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "PyYAML"])
+                # Try without --break-system-packages first (for Python < 3.11)
+                try:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "PyYAML"])
+                except subprocess.CalledProcessError:
+                    # If that fails, try with --break-system-packages (for Python >= 3.11)
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "PyYAML"])
+
+                # Reload sys.path after installation
+                import importlib
+                importlib.invalidate_caches()
+                if user_site not in sys.path:
+                    sys.path.insert(0, user_site)
                 import yaml
 
             with open('\(tempJSONPath)', 'r') as f:

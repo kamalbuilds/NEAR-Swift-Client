@@ -218,11 +218,6 @@ public class NEARClient {
     /// Get current validators
     public func validators(blockId: BlockReference? = nil) async throws -> ValidatorStakeView {
         let blockIdString = blockId.map(convertBlockReferenceToString)
-
-        struct ValidatorsParams: Encodable {
-            let blockId: String?
-        }
-
         let params = ValidatorsParams(blockId: blockIdString)
 
         return try await transport.call(
@@ -244,6 +239,12 @@ public class NEARClient {
 }
 
 // MARK: - Supporting Types
+
+private struct ValidatorsParams: Encodable {
+    let blockId: String?
+}
+
+// MARK: - Public Types
 
 public enum Finality: String {
     case final

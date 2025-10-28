@@ -14,6 +14,7 @@ print("")
 
 // Download OpenAPI spec
 print("📥 Downloading NEAR OpenAPI spec...")
+
 let specURL = URL(string: "https://raw.githubusercontent.com/near/nearcore/master/chain/jsonrpc/openapi/openapi.json")!
 
 do {

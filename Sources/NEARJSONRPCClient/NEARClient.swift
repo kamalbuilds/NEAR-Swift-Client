@@ -217,20 +217,7 @@ public class NEARClient {
     public func validators(blockId: BlockReference? = nil) async throws -> ValidatorStakeView {
         // NEAR validators endpoint expects either null or [blockId] format
         if let blockId = blockId {
-            struct ValidatorsParams: Encodable {
-                let blockId: String
-
-                private enum CodingKeys: String, CodingKey {
-                    case blockId = "block_id"
-                }
-            }
-
-            let blockIdString: String
-            switch blockId {
-            case .height(let height): blockIdString = String(height)
-            case .hash(let hashValue): blockIdString = hashValue
-            case .finality(let finalityValue): blockIdString = finalityValue.rawValue
-            }
+            let blockIdString = convertBlockReferenceToString(blockId)
 
             return try await transport.call(
                 method: "validators",
@@ -244,6 +231,16 @@ public class NEARClient {
                 params: [String?](arrayLiteral: nil),
                 resultType: ValidatorStakeView.self
             )
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func convertBlockReferenceToString(_ ref: BlockReference) -> String {
+        switch ref {
+        case .height(let height): return String(height)
+        case .hash(let hash): return hash
+        case .finality(let finality): return finality.rawValue
         }
     }
 }
