@@ -79,12 +79,14 @@ public class NEARClient {
             let finality: String
             let accountId: String
         }
-        
+
+        // NEAR RPC returns block metadata at the same level as account data
+        // No need for QueryResponse wrapper
         return try await transport.call(
             method: "query",
             params: QueryParams(finality: finality.rawValue, accountId: accountId),
-            resultType: QueryResponse<AccountView>.self
-        ).result
+            resultType: AccountView.self
+        )
     }
     
     // MARK: - Access Key Operations
@@ -101,7 +103,8 @@ public class NEARClient {
             let accountId: String
             let publicKey: String
         }
-        
+
+        // Note: AccessKeyView may need block metadata fields added
         return try await transport.call(
             method: "query",
             params: QueryParams(
@@ -123,7 +126,8 @@ public class NEARClient {
             let finality: String
             let accountId: String
         }
-        
+
+        // Note: AccessKeyList may need block metadata fields added
         return try await transport.call(
             method: "query",
             params: QueryParams(finality: finality.rawValue, accountId: accountId),
@@ -145,7 +149,8 @@ public class NEARClient {
             let accountId: String
             let prefixBase64: String
         }
-        
+
+        // Note: StateResult may need block metadata fields added
         return try await transport.call(
             method: "query",
             params: QueryParams(
@@ -171,7 +176,9 @@ public class NEARClient {
             let methodName: String
             let argsBase64: String
         }
-        
+
+        // NEAR RPC returns block metadata at the same level as the result data
+        // No need for QueryResponse wrapper
         return try await transport.call(
             method: "query",
             params: QueryParams(
@@ -180,8 +187,8 @@ public class NEARClient {
                 methodName: methodName,
                 argsBase64: args.base64EncodedString()
             ),
-            resultType: QueryResponse<FunctionCallResult>.self
-        ).result
+            resultType: FunctionCallResult.self
+        )
     }
     
     // MARK: - Transaction Operations

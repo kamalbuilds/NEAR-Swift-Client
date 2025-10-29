@@ -44,10 +44,10 @@ public enum JSONValue: Decodable {
     case object([String: JSONValue])
     case array([JSONValue])
     case null
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if container.decodeNil() {
             self = .null
         } else if let bool = try? container.decode(Bool.self) {
@@ -64,6 +64,17 @@ public enum JSONValue: Decodable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode JSONValue")
         }
     }
+
+    // Helper methods to extract typed values
+    var stringValue: String? {
+        if case .string(let str) = self { return str }
+        return nil
+    }
+
+    var objectValue: [String: JSONValue]? {
+        if case .object(let obj) = self { return obj }
+        return nil
+    }
 }
 
 /// Base transport for JSON-RPC over HTTP
@@ -72,16 +83,16 @@ public class JSONRPCTransport {
     private let session: URLSession
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
-    
+
     public init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.session = session
-        
+
         // Configure for NEAR's snake_case JSON
         encoder.keyEncodingStrategy = .convertToSnakeCase
         decoder.keyDecodingStrategy = .convertFromSnakeCase
     }
-    
+
     public func call<Params: Encodable, Result: Decodable>(
         method: String,
         params: Params,
@@ -89,32 +100,60 @@ public class JSONRPCTransport {
     ) async throws -> Result {
         let request = JSONRPCRequest(method: method, params: params)
         let requestData = try encoder.encode(request)
-        
+
         var httpRequest = URLRequest(url: baseURL)
         httpRequest.httpMethod = "POST"
         httpRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         httpRequest.httpBody = requestData
-        
+
         let (data, response) = try await session.data(for: httpRequest)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NEARClientError.invalidResponse
         }
-        
+
         guard httpResponse.statusCode == 200 else {
             throw NEARClientError.httpError(statusCode: httpResponse.statusCode)
         }
-        
+
         let jsonResponse = try decoder.decode(JSONRPCResponse<Result>.self, from: data)
-        
+
         if let error = jsonResponse.error {
-            throw error
+            // Convert JSONRPCError to NEARRPCError for proper type safety
+            throw convertToNEARRPCError(error)
         }
-        
+
         guard let result = jsonResponse.result else {
             throw NEARClientError.emptyResult
         }
-        
+
         return result
+    }
+
+    /// Convert JSONRPCError to NEARRPCError with typed error data
+    private func convertToNEARRPCError(_ error: JSONRPCError) -> NEARRPCError {
+        let errorData = error.data.flatMap { parseNEARErrorData($0) }
+        return NEARRPCError(code: error.code, message: error.message, data: errorData)
+    }
+
+    /// Parse JSONValue into NEARErrorData
+    private func parseNEARErrorData(_ jsonValue: JSONValue) -> NEARErrorData? {
+        guard let dict = jsonValue.objectValue else {
+            return nil
+        }
+
+        let name = dict["name"]?.stringValue
+        let cause: NEARErrorCause?
+
+        if let causeDict = dict["cause"]?.objectValue {
+            cause = NEARErrorCause(
+                name: causeDict["name"]?.stringValue,
+                info: causeDict["info"]?.stringValue
+            )
+        } else {
+            cause = nil
+        }
+
+        return NEARErrorData(name: name, cause: cause)
     }
 }

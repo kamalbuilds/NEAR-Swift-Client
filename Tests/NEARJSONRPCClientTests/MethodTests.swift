@@ -131,12 +131,15 @@ final class MethodTests: XCTestCase {
             locked: "0",
             codeHash: "11111111111111111111111111111111",
             storageUsage: 500,
-            storagePaidAt: 0
+            storagePaidAt: 0,
+            blockHash: "test-block-hash",
+            blockHeight: 12345
         )
 
         XCTAssertEqual(mockAccount.amount, "1000000000000000000000000")
         XCTAssertEqual(mockAccount.storageUsage, 500)
         XCTAssertEqual(mockAccount.locked, "0")
+        XCTAssertEqual(mockAccount.blockHeight, 12345)
     }
 
     func testViewAccountWithLocked() async throws {
@@ -145,7 +148,9 @@ final class MethodTests: XCTestCase {
             locked: "500000000000000000000000",
             codeHash: "contract-hash",
             storageUsage: 10000,
-            storagePaidAt: 100000
+            storagePaidAt: 100000,
+            blockHash: "test-block-hash-2",
+            blockHeight: 54321
         )
 
         XCTAssertEqual(mockAccount.locked, "500000000000000000000000")
@@ -167,7 +172,9 @@ final class MethodTests: XCTestCase {
             locked: "0",
             codeHash: "actual-contract-hash-32-chars",
             storageUsage: 50000,
-            storagePaidAt: 10000
+            storagePaidAt: 10000,
+            blockHash: "test-block-hash-3",
+            blockHeight: 99999
         )
 
         XCTAssertNotEqual(mockAccount.codeHash, "11111111111111111111111111111111")
@@ -298,8 +305,8 @@ final class MethodTests: XCTestCase {
         let mockResult = FunctionCallResult(
             result: [72, 101, 108, 108, 111], // "Hello" in bytes
             logs: ["Log entry 1", "Log entry 2"],
-            blockHeight: 100000,
-            blockHash: "block-hash"
+            blockHash: "block-hash",
+            blockHeight: 100000
         )
 
         XCTAssertEqual(mockResult.result.count, 5)
@@ -330,8 +337,8 @@ final class MethodTests: XCTestCase {
         let mockResult = FunctionCallResult(
             result: [],
             logs: [],
-            blockHeight: 1,
-            blockHash: "hash"
+            blockHash: "hash",
+            blockHeight: 1
         )
 
         XCTAssertEqual(mockResult.logs.count, 0)

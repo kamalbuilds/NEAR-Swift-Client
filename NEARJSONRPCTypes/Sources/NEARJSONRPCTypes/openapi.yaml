@@ -854,11 +854,20 @@ components:
           format: uint64
           minimum: 0
           type: integer
+        block_hash:
+          description: Hash of the block where this account state was queried
+          type: string
+        block_height:
+          description: Height of the block where this account state was queried
+          type: integer
+          format: int64
       required:
       - amount
       - locked
       - code_hash
       - storage_usage
+      - block_hash
+      - block_height
       type: object
     AccountWithPublicKey:
       description: Account ID with its public key.
@@ -1983,7 +1992,7 @@ components:
       - hash
       type: object
     CallResult:
-      description: A result returned by contract method
+      description: A result returned by contract method (includes block metadata)
       properties:
         logs:
           items:
@@ -1996,9 +2005,18 @@ components:
             minimum: 0
             type: integer
           type: array
+        block_hash:
+          description: Hash of the block where this call was executed
+          type: string
+        block_height:
+          description: Height of the block where this call was executed
+          type: integer
+          format: int64
       required:
       - result
       - logs
+      - block_hash
+      - block_height
       type: object
     CatchupStatusView:
       description: Status of the [catchup](https://near.github.io/nearcore/architecture/how/sync.html#catchup)

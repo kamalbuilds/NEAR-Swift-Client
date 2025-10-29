@@ -94,12 +94,24 @@ public struct ChunkHeader: Codable {
 
 // MARK: - Account Types
 
+/// Base account data without query metadata
+public struct AccountData: Codable {
+    public let amount: String
+    public let locked: String
+    public let codeHash: String
+    public let storageUsage: Int
+    public let storagePaidAt: Int
+}
+
+/// Complete view_account response including block metadata
 public struct AccountView: Codable {
     public let amount: String
     public let locked: String
     public let codeHash: String
     public let storageUsage: Int
     public let storagePaidAt: Int
+    public let blockHash: String
+    public let blockHeight: Int
 }
 
 public struct AccessKeyView: Codable {
@@ -169,11 +181,26 @@ public struct StateItem: Codable {
 
 // MARK: - Function Call Types
 
+/// Result from calling a view function
+/// The RPC response structure is: result { result: [UInt8], logs: [String], block_hash, block_height }
 public struct FunctionCallResult: Codable {
     public let result: [UInt8]
     public let logs: [String]
-    public let blockHeight: Int
     public let blockHash: String
+    public let blockHeight: Int
+
+    /// Decode the result bytes as JSON
+    public func decodeResult<T: Decodable>(as type: T.Type) throws -> T {
+        let data = Data(result)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(type, from: data)
+    }
+
+    /// Decode the result bytes as a UTF-8 string
+    public func decodeResultAsString() -> String? {
+        return String(data: Data(result), encoding: .utf8)
+    }
 }
 
 // MARK: - Transaction Types
@@ -335,4 +362,157 @@ public struct ChallengeResult: Codable {
 
 public struct GasPrice: Codable {
     public let gasPrice: String
+}
+
+// MARK: - Query Response Types
+
+/// Generic wrapper for query responses that include block metadata
+/// Note: Most query responses embed block_hash and block_height directly in the result
+public struct QueryResponse<T: Decodable>: Decodable {
+    // The actual result data
+    private let rawResult: T
+
+    // Block metadata (may not always be present, depends on query type)
+    public let blockHash: String?
+    public let blockHeight: Int?
+
+    public var result: T {
+        return rawResult
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case blockHash = "block_hash"
+        case blockHeight = "block_height"
+    }
+
+    public init(from decoder: Decoder) throws {
+        // Try to decode block metadata at the top level
+        let container = try? decoder.container(keyedBy: CodingKeys.self)
+        self.blockHash = try? container?.decodeIfPresent(String.self, forKey: .blockHash)
+        self.blockHeight = try? container?.decodeIfPresent(Int.self, forKey: .blockHeight)
+
+        // Decode the actual result
+        self.rawResult = try T(from: decoder)
+    }
+}
+
+/// Response wrapper for queries that include nonce (like view_access_key)
+public struct AccessKeyQueryResponse: Codable {
+    public let nonce: Int
+    public let permission: AccessKeyPermission
+    public let blockHash: String
+    public let blockHeight: Int
+}
+
+/// Response wrapper for view_access_key_list
+public struct AccessKeyListQueryResponse: Codable {
+    public let keys: [AccessKeyInfo]
+    public let blockHash: String
+    public let blockHeight: Int
+}
+
+/// Response wrapper for view_state
+public struct StateQueryResponse: Codable {
+    public let values: [StateItem]
+    public let proof: [String]
+    public let blockHash: String
+    public let blockHeight: Int
+}
+
+// MARK: - NEAR-Specific RPC Error Types
+
+/// NEAR-specific error codes beyond standard JSON-RPC errors
+public enum NEARErrorCode: Int {
+    // Standard JSON-RPC errors
+    case parseError = -32700
+    case invalidRequest = -32600
+    case methodNotFound = -32601
+    case invalidParams = -32602
+    case internalError = -32603
+
+    // NEAR-specific errors (range -32000 to -32099)
+    case handlerError = -32000
+    case requestValidationError = -32001
+    case internalServerError = -32002
+    case timeout = -32003
+
+    // Block/Chunk errors
+    case unknownBlock = -32100
+    case unknownChunk = -32101
+
+    // Account errors
+    case unknownAccount = -32200
+    case unknownAccessKey = -32201
+    case invalidAccount = -32202
+
+    // Transaction errors
+    case unknownTransaction = -32300
+    case invalidTransaction = -32301
+    case timeoutError = -32302
+
+    // Contract errors
+    case contractExecutionError = -32400
+    case compilationError = -32401
+
+    // State/Storage errors
+    case storageError = -32500
+
+    case unknown = 0
+}
+
+/// Detailed NEAR RPC error with typed error codes
+public struct NEARRPCError: Decodable, Error, LocalizedError {
+    public let code: Int
+    public let message: String
+    public let data: NEARErrorData?
+
+    public init(code: Int, message: String, data: NEARErrorData? = nil) {
+        self.code = code
+        self.message = message
+        self.data = data
+    }
+
+    public var errorCode: NEARErrorCode {
+        return NEARErrorCode(rawValue: code) ?? .unknown
+    }
+
+    public var errorDescription: String? {
+        if let data = data {
+            return "\(message) (code: \(code))\nDetails: \(data.description)"
+        }
+        return "\(message) (code: \(code))"
+    }
+}
+
+/// Extended error data from NEAR RPC
+public struct NEARErrorData: Decodable {
+    public let name: String?
+    public let cause: NEARErrorCause?
+
+    public init(name: String?, cause: NEARErrorCause?) {
+        self.name = name
+        self.cause = cause
+    }
+
+    public var description: String {
+        var desc = name ?? "Unknown error"
+        if let cause = cause {
+            desc += " - Cause: \(cause.name ?? "Unknown")"
+            if let info = cause.info {
+                desc += " (\(info))"
+            }
+        }
+        return desc
+    }
+}
+
+/// Detailed error cause information
+public struct NEARErrorCause: Decodable {
+    public let name: String?
+    public let info: String?
+
+    public init(name: String?, info: String?) {
+        self.name = name
+        self.info = info
+    }
 }

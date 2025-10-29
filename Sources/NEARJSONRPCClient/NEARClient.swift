@@ -67,6 +67,7 @@ public class NEARClient {
     // MARK: - Account Operations
     
     /// View account details
+    /// Returns account with embedded block metadata (blockHash, blockHeight)
     public func viewAccount(
         accountId: String,
         finality: Finality = .final
@@ -77,7 +78,7 @@ public class NEARClient {
             let accountId: String
         }
 
-        // The actual NEAR RPC returns the account data directly, not wrapped in QueryResponse
+        // NEAR RPC returns account data with block_hash and block_height at the same level
         return try await transport.call(
             method: "query",
             params: QueryParams(finality: finality.rawValue, accountId: accountId),
@@ -88,18 +89,20 @@ public class NEARClient {
     // MARK: - Access Key Operations
     
     /// View access key
+    /// Returns access key with embedded block metadata
     public func viewAccessKey(
         accountId: String,
         publicKey: String,
         finality: Finality = .final
-    ) async throws -> AccessKeyView {
+    ) async throws -> AccessKeyQueryResponse {
         struct QueryParams: Encodable {
             let requestType = "view_access_key"
             let finality: String
             let accountId: String
             let publicKey: String
         }
-        
+
+        // NEAR RPC returns nonce, permission, block_hash, block_height at the same level
         return try await transport.call(
             method: "query",
             params: QueryParams(
@@ -107,43 +110,47 @@ public class NEARClient {
                 accountId: accountId,
                 publicKey: publicKey
             ),
-            resultType: QueryResponse<AccessKeyView>.self
-        ).result
+            resultType: AccessKeyQueryResponse.self
+        )
     }
     
     /// List all access keys for an account
+    /// Returns list of access keys with embedded block metadata
     public func viewAccessKeyList(
         accountId: String,
         finality: Finality = .final
-    ) async throws -> AccessKeyList {
+    ) async throws -> AccessKeyListQueryResponse {
         struct QueryParams: Encodable {
             let requestType = "view_access_key_list"
             let finality: String
             let accountId: String
         }
-        
+
+        // NEAR RPC returns keys array with block_hash and block_height at the same level
         return try await transport.call(
             method: "query",
             params: QueryParams(finality: finality.rawValue, accountId: accountId),
-            resultType: QueryResponse<AccessKeyList>.self
-        ).result
+            resultType: AccessKeyListQueryResponse.self
+        )
     }
     
     // MARK: - Contract Operations
     
     /// View contract state
+    /// Returns state values with embedded block metadata
     public func viewState(
         accountId: String,
         prefix: Data = Data(),
         finality: Finality = .final
-    ) async throws -> StateResult {
+    ) async throws -> StateQueryResponse {
         struct QueryParams: Encodable {
             let requestType = "view_state"
             let finality: String
             let accountId: String
             let prefixBase64: String
         }
-        
+
+        // NEAR RPC returns values, proof, block_hash, block_height at the same level
         return try await transport.call(
             method: "query",
             params: QueryParams(
@@ -151,11 +158,12 @@ public class NEARClient {
                 accountId: accountId,
                 prefixBase64: prefix.base64EncodedString()
             ),
-            resultType: QueryResponse<StateResult>.self
-        ).result
+            resultType: StateQueryResponse.self
+        )
     }
     
     /// Call a contract view function
+    /// Returns function result with logs and block metadata
     public func callViewFunction(
         accountId: String,
         methodName: String,
@@ -169,7 +177,8 @@ public class NEARClient {
             let methodName: String
             let argsBase64: String
         }
-        
+
+        // NEAR RPC returns result, logs, block_hash, block_height at the same level
         return try await transport.call(
             method: "query",
             params: QueryParams(
@@ -178,8 +187,8 @@ public class NEARClient {
                 methodName: methodName,
                 argsBase64: args.base64EncodedString()
             ),
-            resultType: QueryResponse<FunctionCallResult>.self
-        ).result
+            resultType: FunctionCallResult.self
+        )
     }
     
     // MARK: - Transaction Operations
@@ -264,7 +273,7 @@ public enum NEARClientError: LocalizedError {
     case httpError(statusCode: Int)
     case emptyResult
     case encodingError
-    
+
     public var errorDescription: String? {
         switch self {
         case .invalidURL:
@@ -279,11 +288,4 @@ public enum NEARClientError: LocalizedError {
             return "Failed to encode request parameters"
         }
     }
-}
-
-/// Wrapper for query responses
-struct QueryResponse<T: Decodable>: Decodable {
-    let result: T
-    let blockHeight: Int
-    let blockHash: String
 }

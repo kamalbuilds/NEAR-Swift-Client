@@ -131,7 +131,9 @@ final class MethodTests: XCTestCase {
             locked: "0",
             codeHash: "11111111111111111111111111111111",
             storageUsage: 500,
-            storagePaidAt: 0
+            storagePaidAt: 0,
+            blockHash: "mock-block-hash",
+            blockHeight: 100000
         )
 
         XCTAssertEqual(mockAccount.amount, "1000000000000000000000000")
@@ -145,7 +147,9 @@ final class MethodTests: XCTestCase {
             locked: "500000000000000000000000",
             codeHash: "contract-hash",
             storageUsage: 10000,
-            storagePaidAt: 100000
+            storagePaidAt: 100000,
+            blockHash: "mock-block-hash",
+            blockHeight: 100000
         )
 
         XCTAssertEqual(mockAccount.locked, "500000000000000000000000")
@@ -169,7 +173,9 @@ final class MethodTests: XCTestCase {
             locked: "0",
             codeHash: "actual-contract-hash-32-chars",
             storageUsage: 50000,
-            storagePaidAt: 10000
+            storagePaidAt: 10000,
+            blockHash: "mock-block-hash",
+            blockHeight: 100000
         )
 
         XCTAssertNotEqual(mockAccount.codeHash, "11111111111111111111111111111111")
@@ -300,8 +306,8 @@ final class MethodTests: XCTestCase {
         let mockResult = FunctionCallResult(
             result: [72, 101, 108, 108, 111], // "Hello" in bytes
             logs: ["Log entry 1", "Log entry 2"],
-            blockHeight: 100000,
-            blockHash: "block-hash"
+            blockHash: "block-hash",
+            blockHeight: 100000
         )
 
         XCTAssertEqual(mockResult.result.count, 5)
@@ -332,8 +338,8 @@ final class MethodTests: XCTestCase {
         let mockResult = FunctionCallResult(
             result: [],
             logs: [],
-            blockHeight: 1,
-            blockHash: "hash"
+            blockHash: "hash",
+            blockHeight: 1
         )
 
         XCTAssertEqual(mockResult.logs.count, 0)

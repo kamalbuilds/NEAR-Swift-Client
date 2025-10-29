@@ -4,6 +4,7 @@ import FoundationNetworking
 #endif
 import OpenAPIRuntime
 import OpenAPIURLSession
+import NEARJSONRPCTypes
 
 /// JSON-RPC 2.0 protocol implementation for NEAR
 public struct JSONRPCRequest<Params: Encodable>: Encodable {
@@ -47,10 +48,10 @@ public enum JSONValue: Decodable {
     case object([String: JSONValue])
     case array([JSONValue])
     case null
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if container.decodeNil() {
             self = .null
         } else if let bool = try? container.decode(Bool.self) {
@@ -66,6 +67,17 @@ public enum JSONValue: Decodable {
         } else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode JSONValue")
         }
+    }
+
+    // Helper methods to extract typed values
+    var stringValue: String? {
+        if case .string(let str) = self { return str }
+        return nil
+    }
+
+    var objectValue: [String: JSONValue]? {
+        if case .object(let obj) = self { return obj }
+        return nil
     }
 }
 
@@ -116,21 +128,61 @@ public class JSONRPCTransport {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NEARClientError.invalidResponse
         }
-        
+
+        // Try to decode JSON-RPC response even for non-200 status codes
+        // Some RPC endpoints return errors with 400/500 status codes but still have valid JSON-RPC error responses
+        let jsonResponse: JSONRPCResponse<Result>
+        do {
+            jsonResponse = try decoder.decode(JSONRPCResponse<Result>.self, from: data)
+        } catch {
+            // If we can't decode the response, throw HTTP error
+            if httpResponse.statusCode != 200 {
+                throw NEARClientError.httpError(statusCode: httpResponse.statusCode)
+            }
+            throw error
+        }
+
+        if let error = jsonResponse.error {
+            // Convert JSONRPCError to NEARRPCError for proper type safety
+            throw convertToNEARRPCError(error)
+        }
+
+        // Check HTTP status after checking for JSON-RPC errors
         guard httpResponse.statusCode == 200 else {
             throw NEARClientError.httpError(statusCode: httpResponse.statusCode)
         }
-        
-        let jsonResponse = try decoder.decode(JSONRPCResponse<Result>.self, from: data)
-        
-        if let error = jsonResponse.error {
-            throw error
-        }
-        
+
         guard let result = jsonResponse.result else {
             throw NEARClientError.emptyResult
         }
-        
+
         return result
+    }
+
+    /// Convert JSONRPCError to NEARRPCError with typed error data
+    private func convertToNEARRPCError(_ error: JSONRPCError) -> NEARRPCError {
+        let errorData = error.data.flatMap { parseNEARErrorData($0) }
+        return NEARRPCError(code: error.code, message: error.message, data: errorData)
+    }
+
+    /// Parse JSONValue into NEARErrorData
+    private func parseNEARErrorData(_ jsonValue: JSONValue) -> NEARErrorData? {
+        guard let dict = jsonValue.objectValue else {
+            return nil
+        }
+
+        let name = dict["name"]?.stringValue
+        let cause: NEARErrorCause?
+
+        if let causeDict = dict["cause"]?.objectValue {
+            cause = NEARErrorCause(
+                name: causeDict["name"]?.stringValue,
+                info: causeDict["info"]?.stringValue
+            )
+        } else {
+            cause = nil
+        }
+
+        return NEARErrorData(name: name, cause: cause)
     }
 }
