@@ -141,7 +141,6 @@ swift test --enable-code-coverage
 
 - **[PUBLISHING.md](PUBLISHING.md)** - Complete guide to publishing packages
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development and contribution guidelines
-- **[docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)** - Step-by-step release procedures
 - **[docs/VERSIONING.md](docs/VERSIONING.md)** - Semantic versioning strategy
 - **[docs/DEPLOYMENT_WORKFLOW.md](docs/DEPLOYMENT_WORKFLOW.md)** - Visual deployment workflow
 
